@@ -65,30 +65,39 @@ def generate(req: GenerateRequest = Body(...)):
 
         for future in concurrent.futures.as_completed(
             future_to_model,
-            timeout=service.GENERATION_TIMEOUT_SECONDS + 15,
+            timeout=service.GENERATION_TIMEOUT_SECONDS + 10,
         ):
             model_index = future_to_model[future]
             model_name = req.models[model_index]
-            image_payload = future.result()
-            results[model_index] = {
-                "model": model_name,
-                "data": image_payload["data"],
-                "mime_type": image_payload["mime_type"],
-            }
+            try:
+                image_payload = future.result()
+                results[model_index] = {
+                    "model": model_name,
+                    "data": image_payload["data"],
+                    "mime_type": image_payload["mime_type"],
+                }
+            except Exception as e:
+                print(f"Warning: Model {model_name} failed: {e}")
+
+        # 过滤掉失败的结果进行计费
+        successful_results = [r for r in results if r is not None]
+        if not successful_results:
+            raise HTTPException(status_code=500, detail="生成失败：所有模型均未返回有效数据。")
 
         elapsed_seconds = round(time.perf_counter() - start_time, 2)
-        image_costs = billing.apply_generation_costs(req.models, len(req.images))
         
-        for index, result in enumerate(results):
-            if not result:
-                continue
-
+        # 仅针对成功的模型进行结算
+        successful_model_names = [r["model"] for r in successful_results]
+        image_costs = billing.apply_generation_costs(successful_model_names, len(req.images))
+        
+        # 将扣费信息回填到成功的图片结果中
+        for index, result in enumerate(successful_results):
             result["cost_usd"] = image_costs["image_costs"][index]["cost_usd"]
             result["remaining_balance_usd"] = image_costs["image_costs"][index]["remaining_balance_usd"]
             result["elapsed_seconds"] = elapsed_seconds
 
         return {
-            "images": [result for result in results if result],
+            "images": successful_results,
             "current_balance_usd": image_costs["remaining_balance_usd"],
             "elapsed_seconds": elapsed_seconds,
         }

@@ -22,7 +22,7 @@ def _resolve_generation_timeout_seconds() -> int:
     if legacy_ms_raw:
         return max(15, math.ceil(int(legacy_ms_raw) / 1000))
 
-    return 180
+    return 50
 
 
 GENERATION_TIMEOUT_SECONDS = _resolve_generation_timeout_seconds()

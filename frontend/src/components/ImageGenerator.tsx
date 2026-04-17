@@ -83,7 +83,7 @@ const RATIO_LABEL: Record<string, string> = {
 
 const RES_LABEL: Record<string, string> = { '1k': '1K', '2k': '2K', '4k': '4K' };
 const ASSET_DRAG_MIME = 'application/x-nananobanana-asset-id';
-const REQUEST_TIMEOUT_MS = 195_000;
+const REQUEST_TIMEOUT_MS = 60_000;
 
 const createTempId = (): string => `temp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 

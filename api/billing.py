@@ -3,6 +3,11 @@ import threading
 import os
 from pathlib import Path
 
+try:
+    from upstash_redis import Redis
+except ImportError:
+    Redis = None
+
 PRICING: dict[str, dict[str, float]] = {
     "gemini-3.1-flash-image-preview": {
         "input_image_usd": 0.0005,
@@ -15,9 +20,13 @@ PRICING: dict[str, dict[str, float]] = {
 }
 
 DEFAULT_BALANCE_USD = 185.0
+KV_KEY = "nanobanana:current_balance_usd"
 
-# NOTE: Vercel 文件系统是只读的，唯一可写的是 /tmp
-# 我们优先尝试 /tmp，如果不行则回退到当前目录（本地开发环境）
+# Vercel KV 配置 (由 Vercel 控制台自动注入)
+KV_URL = os.environ.get("KV_REST_API_URL")
+KV_TOKEN = os.environ.get("KV_REST_API_TOKEN")
+
+# Vercel 文件系统是只读的，唯一可写的是 /tmp
 if os.environ.get("VERCEL"):
     STATE_PATH = Path("/tmp/runtime_state.json")
 else:
@@ -25,8 +34,16 @@ else:
 
 STATE_LOCK = threading.Lock()
 
-# 内存中的后备余额（防止文件系统彻底失效时崩溃）
+# 内存中的后备余额
 _MEM_CACHE: dict[str, float] = {"current_balance_usd": DEFAULT_BALANCE_USD}
+
+# 初始化 Redis 客户端
+redis_client = None
+if Redis and KV_URL and KV_TOKEN:
+    try:
+        redis_client = Redis(url=KV_URL, token=KV_TOKEN)
+    except Exception as e:
+        print(f"Warning: Failed to initialize Redis client: {e}")
 
 
 def round_usd(value: float) -> float:
@@ -36,7 +53,18 @@ def round_usd(value: float) -> float:
 def ensure_state() -> dict[str, float]:
     global _MEM_CACHE
     
-    # 1. 尝试从文件读取
+    # 1. 优先尝试从 Vercel KV (Redis) 读取
+    if redis_client:
+        try:
+            val = redis_client.get(KV_KEY)
+            if val is not None:
+                balance = float(val)
+                _MEM_CACHE["current_balance_usd"] = balance
+                return _MEM_CACHE
+        except Exception as e:
+            print(f"Warning: Failed to read from Redis: {e}")
+
+    # 2. 尝试从本地文件读取 (本地开发或 KV 失效)
     if STATE_PATH.exists():
         try:
             content = STATE_PATH.read_text(encoding="utf-8")
@@ -46,19 +74,28 @@ def ensure_state() -> dict[str, float]:
         except Exception:
             pass
 
-    # 2. 如果文件不存在或读取失败，使用内存缓存
     return _MEM_CACHE
 
 
 def save_state(state: dict[str, float]):
     global _MEM_CACHE
-    _MEM_CACHE.update(state)
+    balance = float(state.get("current_balance_usd", DEFAULT_BALANCE_USD))
+    _MEM_CACHE["current_balance_usd"] = balance
     
+    # 1. 优先保存到 Vercel KV
+    if redis_client:
+        try:
+            redis_client.set(KV_KEY, str(balance))
+        except Exception as e:
+            print(f"Warning: Failed to save to Redis: {e}")
+    
+    # 2. 保存到本地文件 (作为额外备份或开发环境使用)
     try:
         STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as e:
-        # Vercel 只读环境下写入失败是正常的，记录但不抛出异常
-        print(f"Warning: Failed to save state to {STATE_PATH}: {e}")
+        # 记录但不抛出异常，防止 Vercel 只读环境崩溃
+        if not os.environ.get("VERCEL"):
+            print(f"Warning: Failed to save state to {STATE_PATH}: {e}")
 
 
 def get_current_balance() -> float:

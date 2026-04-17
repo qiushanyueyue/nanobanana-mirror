@@ -33,11 +33,13 @@ export type ImageResult = {
   mime_type?: string;
   cost_usd?: number;
   remaining_balance_usd?: number;
+  elapsed_seconds?: number;
 };
 
 export type GenerateResponse = {
   images: ImageResult[];
   current_balance_usd?: number;
+  elapsed_seconds?: number;
 };
 
 export type BalanceResponse = {
@@ -57,6 +59,7 @@ export type ChatMessage = {
   aspectRatio?: string;
   resolution?: string;
   usedPresetIds?: string[];
+  elapsedSeconds?: number;
 };
 
 export type ChatSession = {

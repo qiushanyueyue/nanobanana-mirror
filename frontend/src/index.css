@@ -1301,3 +1301,48 @@ body {
     display: none;
   }
 }
+
+/* ─── Responsive Layout ─── */
+@media (max-width: 1280px) {
+  .app {
+    grid-template-columns: var(--left-panel-width, 232px) minmax(0, 1fr) var(--right-panel-width, 0px);
+  }
+  .sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .app {
+    grid-template-columns: var(--left-panel-width, 0px) minmax(0, 1fr) var(--right-panel-width, 0px);
+  }
+  .session-sidebar {
+    display: none;
+  }
+  .chat-container {
+    padding: 0 16px;
+  }
+  .logo span {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .prompt-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .prompt-footer-left {
+    justify-content: space-between;
+  }
+  .btn-generate {
+    width: 100%;
+  }
+  .chat-bubble-bot,
+  .chat-bubble-user {
+    max-width: 100%;
+  }
+  .chat-image-card {
+    min-width: 100%;
+  }
+}

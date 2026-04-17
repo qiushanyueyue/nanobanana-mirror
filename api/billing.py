@@ -19,7 +19,7 @@ PRICING: dict[str, dict[str, float]] = {
     },
 }
 
-DEFAULT_BALANCE_USD = 185.0
+DEFAULT_BALANCE_USD = 180.0
 KV_KEY = "nanobanana:current_balance_usd"
 
 # Vercel KV 配置 (由 Vercel 控制台自动注入)

@@ -649,6 +649,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         images: savedGeneratedImages,
         aspectRatio: ratio,
         resolution: res,
+        elapsedSeconds: response.data.elapsed_seconds,
       } satisfies ChatSession['messages'][number];
 
       onSessionUpdate(session.id, {
@@ -924,6 +925,9 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
                                 <span className="chat-image-spec">
                                   {RATIO_LABEL[message.aspectRatio ?? 'auto']} ·{' '}
                                   {RES_LABEL[message.resolution ?? '1k']}
+                                  {message.elapsedSeconds !== undefined && (
+                                    <> · 用时 {message.elapsedSeconds}s</>
+                                  )}
                                 </span>
                               </div>
                               <div className="chat-image-actions">

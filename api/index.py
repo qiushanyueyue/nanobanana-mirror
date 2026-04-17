@@ -43,8 +43,11 @@ def get_balance():
     return {"current_balance_usd": billing.get_current_balance()}
 
 
+import time
+
 @app.post("/api/generate")
 def generate(req: GenerateRequest = Body(...)):
+    start_time = time.perf_counter()
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=max(len(req.models), 1))
     try:
         results = [None] * len(req.models)
@@ -73,17 +76,21 @@ def generate(req: GenerateRequest = Body(...)):
                 "mime_type": image_payload["mime_type"],
             }
 
+        elapsed_seconds = round(time.perf_counter() - start_time, 2)
         image_costs = billing.apply_generation_costs(req.models, len(req.images))
+        
         for index, result in enumerate(results):
             if not result:
                 continue
 
             result["cost_usd"] = image_costs["image_costs"][index]["cost_usd"]
             result["remaining_balance_usd"] = image_costs["image_costs"][index]["remaining_balance_usd"]
+            result["elapsed_seconds"] = elapsed_seconds
 
         return {
             "images": [result for result in results if result],
             "current_balance_usd": image_costs["remaining_balance_usd"],
+            "elapsed_seconds": elapsed_seconds,
         }
     except concurrent.futures.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="生成超时，请稍后重试。") from exc

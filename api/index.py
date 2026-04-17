@@ -1,3 +1,9 @@
+import os
+import sys
+
+# NOTE: 在 Vercel 环境下，需要手动将当前目录加入路径，否则无法 import billing
+sys.path.append(os.path.dirname(__file__))
+
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field

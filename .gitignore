@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+api/venv/
+api/__pycache__/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Keys & Env (CRITICAL - DO NOT REMOVE)
+gemini api key
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build
+dist/
+build/

@@ -1,8 +1,4 @@
-# Nanobanana Mirror 🍌
-
-一个基于 Google Gemini API 的专业级 AI 图像生成与编辑工具。
-
-![Nanobanana Showcase](file:///Users/qiushanyueyue/.gemini/antigravity/brain/fabbc3c7-59ba-4181-b5db-fb4bdaa46e2e/nanobanana_showcase_1776415185504.png)
+![Nanobanana Showcase](./docs/showcase.png)
 
 ## ✨ 特性
 

@@ -45,8 +45,10 @@ def get_balance():
 
 import time
 
+from fastapi import FastAPI, HTTPException, Body, Request
+
 @app.post("/api/generate")
-def generate(req: GenerateRequest = Body(...)):
+async def generate(request: Request, req: GenerateRequest = Body(...)):
     start_time = time.perf_counter()
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=max(len(req.models), 1))
     try:
@@ -78,6 +80,11 @@ def generate(req: GenerateRequest = Body(...)):
                 }
             except Exception as e:
                 print(f"Warning: Model {model_name} failed: {e}")
+
+        # 检查是否已断开连接（中断）
+        if await request.is_disconnected():
+            print("Client disconnected, skipping billing.")
+            return {"cancelled": True}
 
         # 过滤掉失败的结果进行计费
         successful_results = [r for r in results if r is not None]

@@ -66,14 +66,30 @@ IMAGE_SIZE_LABELS: dict[str, str] = {
 }
 
 
+import re
+
+def _sanitize_prompt(prompt: str) -> str:
+    """
+    自动清理 Midjourney 风格的后缀（如 --ar 16:9, --stylize 等），这些后缀会导致 Gemini 解析错误或拦截。
+    """
+    # 匹配 --[指令] 及其后的参数（直到下一个 -- 或结尾）
+    cleaned = re.sub(r'\s?--[a-z0-9]+(\s+[^\s-]+)?', '', prompt, flags=re.IGNORECASE)
+    # 移除末尾可能残留的连字符
+    cleaned = re.sub(r'\s-+$', '', cleaned)
+    return cleaned.strip()
+
+
 def _build_generation_payload(
     prompt: str,
     aspect_ratio: str,
     resolution: str,
     images: list | None = None,
 ) -> dict[str, Any]:
+    # 预先清理提示词
+    safe_prompt = _sanitize_prompt(prompt)
+    
     resolution_hint = RESOLUTION_HINTS.get(resolution, "")
-    full_prompt = f"{prompt}, {resolution_hint}".rstrip(", ") if resolution_hint else prompt
+    full_prompt = f"{safe_prompt}, {resolution_hint}".rstrip(", ") if resolution_hint else safe_prompt
 
     parts: list[dict[str, Any]] = []
 
@@ -155,9 +171,21 @@ def generate_image_sync(
         raise ValueError(f"模型 {model_name} 返回错误：{_extract_error_message(response)}")
 
     payload = response.json()
+    
+    # 1. 检查 Prompt 是否触发安全限制
+    prompt_feedback = payload.get("promptFeedback") or {}
+    if prompt_feedback.get("blockReason") == "SAFETY":
+        raise ValueError("提示词已触发安全策略被拦截，请尝试修改描述词并重试。")
+
     candidates = payload.get("candidates") or []
+    if not candidates:
+        raise ValueError(f"模型 {model_name} 未返回任何内容，可能因为触发了安全策略或解析错误。")
 
     for candidate in candidates:
+        finish_reason = candidate.get("finishReason")
+        if finish_reason == "SAFETY":
+            raise ValueError("生成的内容已触发安全策略被拦截。")
+
         content = candidate.get("content") or {}
         for part in content.get("parts") or []:
             inline_data = part.get("inlineData")
@@ -167,4 +195,4 @@ def generate_image_sync(
                     "mime_type": inline_data.get("mimeType", "image/png"),
                 }
 
-    raise ValueError(f"模型 {model_name} 未返回图片数据，请检查 prompt 或模型状态。")
+    raise ValueError(f"模型 {model_name} 未能生成图片，请尝试更换关键词。")

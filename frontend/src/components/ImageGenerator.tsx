@@ -603,17 +603,20 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         messages: updatedMessages,
       });
 
-      const imagePayloads = await Promise.all(
-        currentRefs.map(async (ref) => {
-          // 在转基底数据前进行压缩，限制尺寸和质量，防止触碰服务端/代理 Body 限制导致 400
+      const imagePayloads: { data: string; mime_type: string; file_name: string }[] = [];
+      for (const ref of currentRefs) {
+        try {
           const compressedBlob = await compressImageBlob(ref.currentBlob, 1536, 1536, 0.85);
-          return {
-            data: await fileToBase64(compressedBlob),
-            mime_type: 'image/jpeg', // 压缩过程固定输出 jpeg
+          const dataUrl = await fileToBase64(compressedBlob);
+          imagePayloads.push({
+            data: dataUrl,
+            mime_type: 'image/jpeg',
             file_name: ref.sourceName,
-          };
-        }),
-      );
+          });
+        } catch (e) {
+          throw new Error(`处理图片 ${ref.sourceName} 时失败: ${String(e)}`);
+        }
+      }
 
       const abortController = new AbortController();
       abortControllerRef.current = abortController;

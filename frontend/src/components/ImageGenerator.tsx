@@ -454,9 +454,24 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       return;
     }
 
-    await navigator.clipboard.writeText(value);
-    if (feedbackKey) {
-      showTextCopySuccess(feedbackKey);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      if (feedbackKey) {
+        showTextCopySuccess(feedbackKey);
+      }
+    } catch (err) {
+      console.warn('复制失败', err);
     }
   };
 

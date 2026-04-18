@@ -678,7 +678,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
           (cancelled ? '已中断本次生成。' : undefined) ??
           detail ??
           timeoutMessage ??
-          (error instanceof Error ? error.message : '生成失败，请检查 API 密钥。'),
+          (error instanceof Error ? error.message : '生成任务执行失败，请稍后重试或尝试简化提示词内容'),
       } satisfies ChatSession['messages'][number];
 
       onSessionUpdate(session.id, {

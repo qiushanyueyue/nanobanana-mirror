@@ -48,3 +48,59 @@ export const copyBlobToClipboard = async (blob: Blob): Promise<void> => {
   const dataUrl = await fileToDataUrl(blob);
   await navigator.clipboard.writeText(dataUrl);
 };
+
+export const compressImageBlob = async (blob: Blob, maxWidth = 1536, maxHeight = 1536, quality = 0.85): Promise<Blob> => {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      
+      let width = img.width;
+      let height = img.height;
+      const isTooLarge = width > maxWidth || height > maxHeight;
+      
+      // 不超过尺寸限制，且本身也是 JPEG 则不压缩（直接返回）
+      // 如果要绝对控制体积，这里还是画一遍较妥
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(blob);
+        return;
+      }
+      
+      // 如果原始图片是透明背景（如 PNG），转 JPG 会变成黑色底。
+      // 所以我们先填充白色底。
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob(
+        (newBlob) => {
+          if (newBlob) {
+            resolve(newBlob);
+          } else {
+            resolve(blob);
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(blob); // 降级返回原图
+    };
+    img.src = url;
+  });
+};

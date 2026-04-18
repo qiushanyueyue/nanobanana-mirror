@@ -15,7 +15,7 @@ import axios from 'axios';
 import { ImageEditorModal } from './ImageEditorModal';
 import { loadObjectUrl, readImageDimensions, saveImageBlob, getImageAsset } from '../lib/imageStore';
 import { buildSessionMemoryPrompt, serializePromptInput } from '../lib/memory';
-import { base64ToBlob, copyBlobToClipboard, downloadBlob, fileToBase64 } from '../lib/media';
+import { base64ToBlob, copyBlobToClipboard, downloadBlob, fileToBase64, compressImageBlob } from '../lib/media';
 import type { ChatSession, GenerateResponse, ImageAssetRef, ModelId } from '../types';
 
 interface ImageGeneratorProps {
@@ -589,11 +589,15 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       });
 
       const imagePayloads = await Promise.all(
-        currentRefs.map(async (ref) => ({
-          data: await fileToBase64(ref.currentBlob),
-          mime_type: ref.mimeType,
-          file_name: ref.sourceName,
-        })),
+        currentRefs.map(async (ref) => {
+          // 在转基底数据前进行压缩，限制尺寸和质量，防止触碰服务端/代理 Body 限制导致 400
+          const compressedBlob = await compressImageBlob(ref.currentBlob, 1536, 1536, 0.85);
+          return {
+            data: await fileToBase64(compressedBlob),
+            mime_type: 'image/jpeg', // 压缩过程固定输出 jpeg
+            file_name: ref.sourceName,
+          };
+        }),
       );
 
       const abortController = new AbortController();

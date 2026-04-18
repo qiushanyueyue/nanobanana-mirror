@@ -610,7 +610,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
           const dataUrl = await fileToBase64(compressedBlob);
           imagePayloads.push({
             data: dataUrl,
-            mime_type: 'image/jpeg',
+            mime_type: compressedBlob.type || 'image/jpeg',
             file_name: ref.sourceName,
           });
         } catch (e) {
@@ -693,14 +693,18 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         setUsedPresetIds(currentPresetIds);
       }
 
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const statusText = status ? ` (HTTP ${status})` : '';
+
       const errorMessage = {
         id: Date.now() + 2,
         type: 'error',
         error:
           (cancelled ? '已中断本次生成。' : undefined) ??
-          detail ??
+          (status === 413 ? '图片数据过大，超出服务端限制，请尝试更简单的编辑。' : undefined) ??
+          (detail ? `${detail}${statusText}` : undefined) ??
           timeoutMessage ??
-          (error instanceof Error ? error.message : `遇到未知异常: ${String(error)}`),
+          (error instanceof Error ? `${error.message}${statusText}` : `遇到未知异常: ${String(error)}${statusText}`),
       } satisfies ChatSession['messages'][number];
 
       onSessionUpdate(session.id, {

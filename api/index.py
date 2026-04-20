@@ -1,13 +1,9 @@
 import os
 import sys
 
-# NOTE: 在 Vercel 环境下，需要手动将当前目录加入路径，否则无法 import billing
-sys.path.append(os.path.dirname(__file__))
-
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import billing
 import service
 import traceback
 import concurrent.futures
@@ -38,11 +34,6 @@ class GenerateRequest(BaseModel):
     images: list[InputImage] = Field(default_factory=list)
 
 
-@app.get("/api/balance")
-def get_balance():
-    return {"current_balance_usd": billing.get_current_balance()}
-
-
 import time
 
 from fastapi import FastAPI, HTTPException, Body, Request
@@ -65,6 +56,7 @@ async def generate(request: Request, req: GenerateRequest = Body(...)):
             for index, model_name in enumerate(req.models)
         }
 
+        errors = []
         for future in concurrent.futures.as_completed(
             future_to_model,
             timeout=service.GENERATION_TIMEOUT_SECONDS + 10,
@@ -79,7 +71,9 @@ async def generate(request: Request, req: GenerateRequest = Body(...)):
                     "mime_type": image_payload["mime_type"],
                 }
             except Exception as e:
-                print(f"Warning: Model {model_name} failed: {e}")
+                err_msg = str(e)
+                print(f"Warning: Model {model_name} failed: {err_msg}")
+                errors.append(f"[{model_name}]: {err_msg}")
 
         # 检查是否已断开连接（中断）
         if await request.is_disconnected():
@@ -89,23 +83,16 @@ async def generate(request: Request, req: GenerateRequest = Body(...)):
         # 过滤掉失败的结果进行计费
         successful_results = [r for r in results if r is not None]
         if not successful_results:
-            raise HTTPException(status_code=500, detail="生成失败：所有模型均未返回有效数据。")
+            error_details = " | ".join(errors)
+            raise HTTPException(status_code=500, detail=f"生成失败：所有模型均未返回有效数据。详情：{error_details}")
 
         elapsed_seconds = round(time.perf_counter() - start_time, 2)
         
-        # 仅针对成功的模型进行结算
-        successful_model_names = [r["model"] for r in successful_results]
-        image_costs = billing.apply_generation_costs(successful_model_names, len(req.images))
-        
-        # 将扣费信息回填到成功的图片结果中
         for index, result in enumerate(successful_results):
-            result["cost_usd"] = image_costs["image_costs"][index]["cost_usd"]
-            result["remaining_balance_usd"] = image_costs["image_costs"][index]["remaining_balance_usd"]
             result["elapsed_seconds"] = elapsed_seconds
 
         return {
             "images": successful_results,
-            "current_balance_usd": image_costs["remaining_balance_usd"],
             "elapsed_seconds": elapsed_seconds,
         }
     except concurrent.futures.TimeoutError as exc:

@@ -676,7 +676,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
 
       onSessionUpdate(session.id, {
         messages: updatedMessages.map((message) => (message.type === 'loading' ? botMessage : message)),
-        remainingBalanceUsd: response.data.current_balance_usd ?? currentBalanceUsd,
       });
     } catch (error) {
       const cancelled = axios.isAxiosError(error) && error.code === 'ERR_CANCELED';
@@ -1115,9 +1114,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
                     <Upload size={13} />
                     上传参考图
                   </button>
-                  <div className="prompt-balance">
-                    当前余额 ${currentBalanceUsd.toFixed(2)} USD
-                  </div>
                 </div>
                 {loading ? (
                   <button type="button" className="btn-generate danger" onClick={handleCancelGenerate}>

@@ -42,14 +42,7 @@ function App() {
       const stored = localStorage.getItem(STORAGE_KEY);
       let fetchedBalance = STARTING_BALANCE_USD;
 
-      try {
-        const balanceResponse = await axios.get<BalanceResponse>('/api/balance', {
-          timeout: 10_000,
-        });
-        fetchedBalance = balanceResponse.data.current_balance_usd;
-      } catch {
-        fetchedBalance = STARTING_BALANCE_USD;
-      }
+      fetchedBalance = STARTING_BALANCE_USD;
 
       const nextSessions = await migrateStoredSessions(stored, fetchedBalance);
 

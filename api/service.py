@@ -1,6 +1,6 @@
 import math
 import os
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 
@@ -83,7 +83,7 @@ def _build_generation_payload(
     prompt: str,
     aspect_ratio: str,
     resolution: str,
-    images: list | None = None,
+    images: Optional[list] = None,
 ) -> dict[str, Any]:
     # 预先清理提示词
     safe_prompt = _sanitize_prompt(prompt)
@@ -145,7 +145,7 @@ def generate_image_sync(
     aspect_ratio: str,
     resolution: str,
     model_name: str,
-    images: list | None = None,
+    images: Optional[list] = None,
 ) -> dict[str, str]:
     """
     通过 Gemini REST 接口生成图片。直接走 httpx，规避当前环境下 google-genai SDK 的 TLS 握手超时问题。

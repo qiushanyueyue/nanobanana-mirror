@@ -20,7 +20,6 @@ import type { ChatSession, GenerateResponse, ImageAssetRef, ModelId } from '../t
 
 interface ImageGeneratorProps {
   session: ChatSession;
-  currentBalanceUsd: number;
   aspectRatio: string;
   resolution: string;
   selectedModels: ModelId[];
@@ -117,7 +116,6 @@ const createPendingReference = (source: IncomingReference): PendingReference => 
 
 export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   session,
-  currentBalanceUsd,
   aspectRatio,
   resolution,
   selectedModels,
@@ -659,8 +657,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
             mimeType: asset.mimeType,
             fileName: asset.fileName,
             model: image.model,
-            costUsd: image.cost_usd,
-            remainingBalanceUsd: image.remaining_balance_usd,
           } satisfies ImageAssetRef;
         }),
       );

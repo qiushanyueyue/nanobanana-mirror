@@ -770,11 +770,6 @@ body {
   flex-wrap: wrap;
 }
 
-.prompt-balance {
-  font-size: 0.74rem;
-  color: var(--text-2);
-}
-
 .btn-upload {
   display: flex; align-items: center; gap: 5px;
   padding: 6px 12px;

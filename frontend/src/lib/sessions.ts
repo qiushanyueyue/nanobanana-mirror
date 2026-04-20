@@ -1,4 +1,3 @@
-import { STARTING_BALANCE_USD } from './costs';
 import type {
   ChatMessage,
   ChatSession,
@@ -23,13 +22,12 @@ export const DEFAULT_PROMPT_PRESETS: PromptPreset[] = [
   updatedAt: index + 1,
 }));
 
-export const createChatSession = (remainingBalanceUsd = STARTING_BALANCE_USD): ChatSession => ({
+export const createChatSession = (): ChatSession => ({
   id: Date.now().toString(),
   title: '新对话',
   messages: [],
   promptPresets: DEFAULT_PROMPT_PRESETS.map((preset) => ({ ...preset })),
   timestamp: Date.now(),
-  remainingBalanceUsd,
 });
 
 export const deriveSessionTitle = (messages: ChatMessage[], fallbackTitle: string): string => {
@@ -148,17 +146,16 @@ const migrateGeneratedImages = async (
 
 export const migrateStoredSessions = async (
   rawValue: string | null,
-  currentBalanceUsd?: number,
 ): Promise<ChatSession[]> => {
   if (!rawValue) {
-    return [createChatSession(currentBalanceUsd)];
+    return [createChatSession()];
   }
 
   try {
     const parsed = JSON.parse(rawValue) as Array<Partial<ChatSession>>;
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      return [createChatSession(currentBalanceUsd)];
+      return [createChatSession()];
     }
 
     return Promise.all(
@@ -193,16 +190,10 @@ export const migrateStoredSessions = async (
             session.promptPresets && session.promptPresets.length > 0
               ? session.promptPresets
               : DEFAULT_PROMPT_PRESETS.map((preset) => ({ ...preset })),
-          remainingBalanceUsd:
-            typeof currentBalanceUsd === 'number'
-              ? currentBalanceUsd
-              : typeof session.remainingBalanceUsd === 'number'
-              ? session.remainingBalanceUsd
-              : STARTING_BALANCE_USD,
         } satisfies ChatSession;
       }),
     );
   } catch {
-    return [createChatSession(currentBalanceUsd)];
+    return [createChatSession()];
   }
 };

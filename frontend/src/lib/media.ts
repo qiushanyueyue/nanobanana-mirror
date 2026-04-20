@@ -59,7 +59,6 @@ export const compressImageBlob = async (blob: Blob, maxWidth = 1536, maxHeight =
       
       let width = img.width;
       let height = img.height;
-      const isTooLarge = width > maxWidth || height > maxHeight;
       
       // 不超过尺寸限制，且本身也是 JPEG 则不压缩（直接返回）
       // 如果要绝对控制体积，这里还是画一遍较妥

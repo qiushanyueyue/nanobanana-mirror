@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import axios from 'axios';
 import { OptionsPanel } from './components/OptionsPanel';
 import { SessionSidebar } from './components/SessionSidebar';
 import { ImageGenerator } from './components/ImageGenerator';
@@ -10,8 +9,7 @@ import {
   migrateStoredSessions,
   STORAGE_KEY,
 } from './lib/sessions';
-import { STARTING_BALANCE_USD } from './lib/costs';
-import type { BalanceResponse, ChatSession, ModelId } from './types';
+import type { ChatSession, ModelId } from './types';
 
 type PresetRequest = {
   sessionId: string;
@@ -23,14 +21,13 @@ type PresetRequest = {
 function App() {
   const [aspectRatio, setAspectRatio] = useState('auto');
   const [resolution, setResolution] = useState('1k');
-  const [bootstrapSession] = useState(() => createChatSession(STARTING_BALANCE_USD));
+  const [bootstrapSession] = useState(() => createChatSession());
   const [selectedModels, setSelectedModels] = useState<ModelId[]>([
     'gemini-3.1-flash-image-preview',
   ]);
   const [sessions, setSessions] = useState<ChatSession[]>([bootstrapSession]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(bootstrapSession.id);
   const [isHydrating, setIsHydrating] = useState(true);
-  const [currentBalanceUsd, setCurrentBalanceUsd] = useState(STARTING_BALANCE_USD);
   const [presetRequest, setPresetRequest] = useState<PresetRequest>(null);
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
@@ -40,11 +37,7 @@ function App() {
 
     const hydrate = async () => {
       const stored = localStorage.getItem(STORAGE_KEY);
-      let fetchedBalance = STARTING_BALANCE_USD;
-
-      fetchedBalance = STARTING_BALANCE_USD;
-
-      const nextSessions = await migrateStoredSessions(stored, fetchedBalance);
+      const nextSessions = await migrateStoredSessions(stored);
 
       if (!isMounted) {
         return;
@@ -52,7 +45,6 @@ function App() {
 
       setSessions(nextSessions);
       setCurrentSessionId(nextSessions[0]?.id ?? null);
-      setCurrentBalanceUsd(fetchedBalance);
       setIsHydrating(false);
     };
 
@@ -88,13 +80,10 @@ function App() {
       }),
     );
 
-    if (typeof patch.remainingBalanceUsd === 'number') {
-      setCurrentBalanceUsd(patch.remainingBalanceUsd);
-    }
   };
 
   const createNewSession = () => {
-    const nextSession = createChatSession(currentBalanceUsd);
+    const nextSession = createChatSession();
     setSessions((previousSessions) => [nextSession, ...previousSessions]);
     setCurrentSessionId(nextSession.id);
   };
@@ -119,7 +108,7 @@ function App() {
       const filteredSessions = previousSessions.filter((session) => session.id !== id);
 
       if (filteredSessions.length === 0) {
-        const fallbackSession = createChatSession(currentBalanceUsd);
+        const fallbackSession = createChatSession();
         setCurrentSessionId(fallbackSession.id);
         return [fallbackSession];
       }
@@ -166,7 +155,6 @@ function App() {
         <ImageGenerator
           key={currentSession.id}
           session={currentSession}
-          currentBalanceUsd={currentBalanceUsd}
           aspectRatio={aspectRatio}
           resolution={resolution}
           selectedModels={selectedModels}

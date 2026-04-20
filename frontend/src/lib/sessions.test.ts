@@ -6,10 +6,9 @@ import {
 } from './sessions';
 
 describe('sessions', () => {
-  it('creates new sessions with the current balance and full default presets', () => {
-    const session = createChatSession(172.3456);
+  it('creates new sessions with full default presets', () => {
+    const session = createChatSession();
 
-    expect(session.remainingBalanceUsd).toBe(172.3456);
     expect(session.promptPresets.map((preset) => preset.text)).toEqual(
       DEFAULT_PROMPT_PRESETS.map((preset) => preset.text),
     );
@@ -30,10 +29,8 @@ describe('sessions', () => {
           ],
         },
       ]),
-      183.25,
     );
 
-    expect(sessions[0].remainingBalanceUsd).toBe(183.25);
     expect(sessions[0].messages[0]).toMatchObject({
       type: 'error',
       error: '上次生成未完成，请重新生成。',

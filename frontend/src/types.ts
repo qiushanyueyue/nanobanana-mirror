@@ -15,8 +15,6 @@ export type ImageAssetRef = {
   height?: number;
   model?: ModelId;
   originalAssetId?: string;
-  costUsd?: number;
-  remainingBalanceUsd?: number;
 };
 
 export type PromptPreset = {
@@ -31,19 +29,12 @@ export type ImageResult = {
   model: ModelId;
   data: string;
   mime_type?: string;
-  cost_usd?: number;
-  remaining_balance_usd?: number;
   elapsed_seconds?: number;
 };
 
 export type GenerateResponse = {
   images: ImageResult[];
-  current_balance_usd?: number;
   elapsed_seconds?: number;
-};
-
-export type BalanceResponse = {
-  current_balance_usd: number;
 };
 
 export type ChatMessage = {
@@ -68,7 +59,6 @@ export type ChatSession = {
   messages: ChatMessage[];
   promptPresets: PromptPreset[];
   timestamp: number;
-  remainingBalanceUsd: number;
 };
 
 export type EditorPoint = {

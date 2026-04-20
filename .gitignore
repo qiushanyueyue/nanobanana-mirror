@@ -9,6 +9,7 @@ frontend/dist/
 # IDEs
 .vscode/
 .idea/
+.vercel/
 
 # Keys & Env (CRITICAL - DO NOT REMOVE)
 gemini api key

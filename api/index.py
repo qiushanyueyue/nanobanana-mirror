@@ -1,6 +1,10 @@
 import os
 import sys
 
+# Vercel 打包 Python 函数时不会自动把当前 api 目录加入 import 路径。
+# 保持显式注入，避免 `import service` 在远端构建阶段失败。
+sys.path.append(os.path.dirname(__file__))
+
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -8,16 +12,6 @@ import service
 import traceback
 import concurrent.futures
 from typing import Optional
-
-app = FastAPI(title="Nanobanana API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 class InputImage(BaseModel):
@@ -35,8 +29,17 @@ class GenerateRequest(BaseModel):
 
 
 import time
+from fastapi import Request
 
-from fastapi import FastAPI, HTTPException, Body, Request
+app = FastAPI(title="Nanobanana API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/api/generate")
 async def generate(request: Request, req: GenerateRequest = Body(...)):

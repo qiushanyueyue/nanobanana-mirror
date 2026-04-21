@@ -41,6 +41,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def _build_generation_failure_response(errors: list[str]) -> HTTPException:
+    error_details = " | ".join(errors) if errors else "上游模型暂时不可用，请稍后重试。"
+    retryable_markers = (
+        "high demand",
+        "try again later",
+        "temporarily",
+        "service unavailable",
+        "rate limit",
+        "resource exhausted",
+        "生成超时",
+    )
+    status_code = 503 if any(marker in error_details.lower() for marker in retryable_markers) else 500
+    return HTTPException(status_code=status_code, detail=f"生成失败：所有模型均未返回有效数据。详情：{error_details}")
+
 @app.post("/api/generate")
 async def generate(request: Request, req: GenerateRequest = Body(...)):
     start_time = time.perf_counter()
@@ -86,8 +101,7 @@ async def generate(request: Request, req: GenerateRequest = Body(...)):
         # 过滤掉失败的结果进行计费
         successful_results = [r for r in results if r is not None]
         if not successful_results:
-            error_details = " | ".join(errors)
-            raise HTTPException(status_code=500, detail=f"生成失败：所有模型均未返回有效数据。详情：{error_details}")
+            raise _build_generation_failure_response(errors)
 
         elapsed_seconds = round(time.perf_counter() - start_time, 2)
         

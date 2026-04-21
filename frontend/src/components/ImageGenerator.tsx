@@ -697,6 +697,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         error:
           (cancelled ? '已中断本次生成。' : undefined) ??
           (status === 413 ? '图片数据过大，超出服务端限制，请尝试更简单的编辑。' : undefined) ??
+          (status === 503 ? '当前模型服务繁忙，我已经做过自动重试，但这次仍未成功。请稍后重试，或先只使用一个模型生成。' : undefined) ??
           (detail ? `${detail}${statusText}` : undefined) ??
           timeoutMessage ??
           (error instanceof Error ? `${error.message}${statusText}` : `遇到未知异常: ${String(error)}${statusText}`),

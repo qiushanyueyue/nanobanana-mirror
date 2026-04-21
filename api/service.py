@@ -1,5 +1,6 @@
 import math
 import os
+import time
 from typing import Any, Optional
 
 import httpx
@@ -27,6 +28,8 @@ def _resolve_generation_timeout_seconds() -> int:
 
 GENERATION_TIMEOUT_SECONDS = _resolve_generation_timeout_seconds()
 GEMINI_API_BASE_URL = os.getenv("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com")
+MAX_RETRY_ATTEMPTS = max(1, int(os.getenv("GENERATION_RETRY_ATTEMPTS", "3")))
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 if not api_key:
     # 尝试当前目录 (api/) 或上级目录 (项目根目录)
@@ -140,6 +143,27 @@ def _extract_error_message(response: httpx.Response) -> str:
     return response.text[:400] or f"HTTP {response.status_code}"
 
 
+def _is_retryable_error(status_code: int, message: str) -> bool:
+    normalized = message.lower()
+    return status_code in RETRYABLE_STATUS_CODES or any(
+        token in normalized
+        for token in (
+            "high demand",
+            "try again later",
+            "temporarily unavailable",
+            "temporarily overloaded",
+            "service unavailable",
+            "rate limit",
+            "resource exhausted",
+        )
+    )
+
+
+def _compute_retry_delay_seconds(attempt: int) -> float:
+    # Short exponential backoff keeps the UI responsive while smoothing burst errors.
+    return min(6.0, 0.75 * (2 ** max(0, attempt - 1)))
+
+
 def generate_image_sync(
     prompt: str,
     aspect_ratio: str,
@@ -153,22 +177,35 @@ def generate_image_sync(
     payload = _build_generation_payload(prompt, aspect_ratio, resolution, images)
     endpoint = f"{GEMINI_API_BASE_URL.rstrip('/')}/v1beta/models/{model_name}:generateContent"
 
-    try:
-        response = http_client.post(
-            endpoint,
-            headers={
-                "Content-Type": "application/json",
-                "x-goog-api-key": api_key,
-            },
-            json=payload,
-        )
-    except httpx.TimeoutException as exc:
-        raise ValueError(f"模型 {model_name} 生成超时，请稍后重试。") from exc
-    except httpx.HTTPError as exc:
-        raise ValueError(f"模型 {model_name} 请求失败：{exc}") from exc
+    for attempt in range(1, MAX_RETRY_ATTEMPTS + 1):
+        try:
+            response = http_client.post(
+                endpoint,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
+                json=payload,
+            )
+        except httpx.TimeoutException as exc:
+            if attempt < MAX_RETRY_ATTEMPTS:
+                time.sleep(_compute_retry_delay_seconds(attempt))
+                continue
+            raise ValueError(f"模型 {model_name} 生成超时，请稍后重试。") from exc
+        except httpx.HTTPError as exc:
+            if attempt < MAX_RETRY_ATTEMPTS:
+                time.sleep(_compute_retry_delay_seconds(attempt))
+                continue
+            raise ValueError(f"模型 {model_name} 请求失败：{exc}") from exc
 
-    if response.status_code >= 400:
-        raise ValueError(f"模型 {model_name} 返回错误：{_extract_error_message(response)}")
+        if response.status_code >= 400:
+            error_message = _extract_error_message(response)
+            if attempt < MAX_RETRY_ATTEMPTS and _is_retryable_error(response.status_code, error_message):
+                time.sleep(_compute_retry_delay_seconds(attempt))
+                continue
+            raise ValueError(f"模型 {model_name} 返回错误：{error_message}")
+
+        break
 
     payload = response.json()
     
